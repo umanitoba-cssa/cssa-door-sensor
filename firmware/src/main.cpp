@@ -1,13 +1,15 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 
+#include "blesvc.hpp"
 #include "configsvc.hpp"
 #include "constants/pins.hpp"
-#include "ledsvc.hpp"
-#include "setupsvc.hpp"
-#include "wifisvc.hpp"
 #include "doorstatesvc.hpp"
+#include "ledsvc.hpp"
+#include "serialutils.cpp"
+#include "setupsvc.hpp"
 #include "webhooksvc.hpp"
+#include "wifisvc.hpp"
 
 #define TICK_DELAY 10
 
@@ -21,10 +23,19 @@ ConfigManager ConfigSvc;
 SetupService SetupSvc;
 DoorStateService DoorStateSvc;
 WebhookService WebhookSvc;
+BLEUARTService BLESvc;
 
 bool getDoorState();
 void startBackgroundThread();
 void asyncTick(void *parameter);
+
+void printCallback(const char *string) { Serial.print(string); }
+
+int readIntCallback(int timeout) { return SerialUtils::readInt(timeout); }
+
+String readStrCallback(bool hideInput) {
+    return SerialUtils::readString(hideInput);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -35,13 +46,15 @@ void setup() {
 
     startBackgroundThread();
 
-    SetupSvc.start();
+    SetupSvc.start(printCallback, readIntCallback, readStrCallback);
+
+    BLESvc.setup();
 
     WifiSvc.connect();
 
     Serial.println("Waiting 10s for initial data collection...");
     delay(10000);
-    
+
     Serial.println("Performing webhook init...");
     WebhookSvc.init(getDoorState());
 }
@@ -85,6 +98,7 @@ void asyncTick(void *parameter) {
     for (;;) {
         LEDSvc.tick();
         DoorStateSvc.tick();
+        BLESvc.tick();
         delay(TICK_DELAY);
     }
 }

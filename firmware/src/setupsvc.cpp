@@ -7,26 +7,42 @@
 
 SetupService::SetupService() {}
 
-void SetupService::start() { menu(); }
+void SetupService::start(print_fn print, read_int_fn intReader,
+                         read_str_fn strReader) {
+    this->print = print;
+    this->intReader = intReader;
+    this->strReader = strReader;
+    menu();
+}
 
 void SetupService::menu() {
+    char buffer[256];
     while (true) {
         LEDSvc.set(COLOR_ORANGE);
         ConfigData data = ConfigSvc.load();
-        Serial.println("Current configuration:");
-        Serial.printf("Wifi SSID: %s\n", data.ssid);
+
+        snprintf(buffer, sizeof(buffer), "Current configuration:\n");
+        this->print(buffer);
+        snprintf(buffer, sizeof(buffer), "Wifi SSID: %s\n", data.ssid);
+        this->print(buffer);
         if (data.wifimode == 2) {
-            Serial.printf("Wifi user: %s\n", data.userid);
+            snprintf(buffer, sizeof(buffer), "Wifi user: %s\n", data.userid);
+            this->print(buffer);
         }
-        Serial.printf("Webhook: %s\n\n", data.webhook);
+        snprintf(buffer, sizeof(buffer), "Webhook: %s\n\n", data.webhook);
+        this->print(buffer);
 
-        Serial.println("Select option:");
-        Serial.println("1. Configure Wifi");
-        Serial.println("2. Set Webhook");
-        Serial.println("3. Clear configuration");
-        Serial.println("0. Resume boot");
-
-        int option = SerialUtils::readInt(10000);
+        snprintf(buffer, sizeof(buffer), "Select option:\n");
+        this->print(buffer);
+        snprintf(buffer, sizeof(buffer), "1. Configure Wifi\n");
+        this->print(buffer);
+        snprintf(buffer, sizeof(buffer), "2. Set Webhook\n");
+        this->print(buffer);
+        snprintf(buffer, sizeof(buffer), "3. Clear configuration\n");
+        this->print(buffer);
+        snprintf(buffer, sizeof(buffer), "0. Resume boot\n");
+        this->print(buffer);
+        int option = intReader(10000);
 
         switch (option) {
         case 1:
@@ -38,64 +54,83 @@ void SetupService::menu() {
         case 3:
             clear();
             break;
-        case 0: 
+        case 0:
         case -1:
             return;
         default:
-            Serial.println("Invalid option");
+            snprintf(buffer, sizeof(buffer), "Invalid option\n");
+            this->print(buffer);
             break;
         }
     }
 }
 
 void SetupService::wifi() {
+    char buffer[256];
+
     String ssid;
     String userId;
     String password;
     bool result;
-    Serial.println("Wifi network type:");
-    Serial.println("1. Standard");
-    Serial.println("2. WPA2 Enterprise (User ID and Password)");
+    snprintf(buffer, sizeof(buffer), "Wifi network type:\n");
+    this->print(buffer);
+    snprintf(buffer, sizeof(buffer), "1. Standard\n");
+    this->print(buffer);
+    snprintf(buffer, sizeof(buffer),
+             "2. WPA2 Enterprise (User ID and Password)\n");
+    this->print(buffer);
 
-    int option = SerialUtils::readInt();
+    int option = this->intReader(10000);
 
     switch (option) {
     case 1:
-        Serial.print("SSID: ");
-        ssid = SerialUtils::readString();
-        Serial.print("Password: ");
-        password = SerialUtils::readString(true);
-        Serial.printf("%s/%s\n", ssid, password);
+        snprintf(buffer, sizeof(buffer), "SSID: ");
+        this->print(buffer);
+        ssid = this->strReader(false); // SerialUtils::readString();
+        snprintf(buffer, sizeof(buffer), "Password: ");
+        this->print(buffer);
+        password = this->strReader(true); // SerialUtils::readString(true);
+        snprintf(buffer, sizeof(buffer), "%s/%s\n", ssid, password);
+        this->print(buffer);
         result = WifiSvc.connTestStandard(ssid, password);
         if (result) {
             WifiSvc.saveStandard(ssid, password);
         }
         break;
     case 2:
-        Serial.print("SSID: ");
-        ssid = SerialUtils::readString();
-        Serial.print("User ID: ");
-        userId = SerialUtils::readString();
-        Serial.print("Password: ");
-        password = SerialUtils::readString(true);
+        snprintf(buffer, sizeof(buffer), "SSID: ");
+        this->print(buffer);
+        ssid = this->strReader(false); // SerialUtils::readString();
+        snprintf(buffer, sizeof(buffer), "User ID: ");
+        this->print(buffer);
+        userId = this->strReader(false); // SerialUtils::readString();
+        snprintf(buffer, sizeof(buffer), "Password: ");
+        this->print(buffer);
+        password = this->strReader(true); // SerialUtils::readString(true);
         result = WifiSvc.connTestEnterprise(ssid, userId, password);
         if (result) {
             WifiSvc.saveEnterprise(ssid, userId, password);
         }
         break;
     default:
-        Serial.println("Invalid option");
+        snprintf(buffer, sizeof(buffer), "Invalid option");
+        this->print(buffer);
         break;
     }
 }
 
-void SetupService::webhook() { 
-    Serial.print("Webhook: ");
-    String webhook = SerialUtils::readString();
+void SetupService::webhook() {
+    char buffer[32];
+
+    snprintf(buffer, sizeof(buffer), "Webhook: ");
+    this->print(buffer);
+    String webhook = this->strReader(false);
     ConfigSvc.saveWebhookUrl(webhook);
 }
 
 void SetupService::clear() {
-    Serial.println("Clearing configuration");
+    char buffer[32];
+    snprintf(buffer, sizeof(buffer), "Clearing configuration");
+    this->print(buffer);
     ConfigSvc.clear();
 }
