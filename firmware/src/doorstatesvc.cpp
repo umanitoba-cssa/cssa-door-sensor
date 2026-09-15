@@ -15,7 +15,6 @@
 #define SENSOR_DEBOUNCE_MIN 180
 #define SENSOR_MAX_DISTANCE 70
 
-
 byte switchData[SWITCH_DEBOUNCE_POINTS];
 byte switchDataIndex = 0;
 byte switchState = false;
@@ -24,12 +23,12 @@ bool sensorData[SENSOR_DEBOUNCE_POINTS];
 byte sensorDataIndex = 0;
 bool sensorState = false;
 
-
 DoorStateService::DoorStateService() {
-    pinMode(Pins::SPDT_A, INPUT);
-    pinMode(Pins::SPDT_B, INPUT);
+    pinMode(Pins::SPDT_A, INPUT_PULLDOWN);
+    pinMode(Pins::SPDT_B, INPUT_PULLDOWN);
     pinMode(Pins::SPDT_POLE, OUTPUT);
-    pinMode(Pins::REED_SWITCH, INPUT_PULLUP);  // Enable internal pull-up for NC reed switch
+    pinMode(Pins::REED_SWITCH,
+            INPUT_PULLUP); // Enable internal pull-up for NC reed switch
 
     digitalWrite(Pins::SPDT_POLE, HIGH);
 }
@@ -42,9 +41,7 @@ bool DoorStateService::getSensorState() {
     }
 }
 
-byte DoorStateService::getSwitchState() {
-    return switchState;
-}
+byte DoorStateService::getSwitchState() { return switchState; }
 
 void DoorStateService::tick() {
     tickSwitch();
@@ -96,9 +93,9 @@ void DoorStateService::tickSensor() {
     }
 
     if (closedCount >= SENSOR_DEBOUNCE_MIN) {
-        sensorState = true;   // Door is closed
+        sensorState = true; // Door is closed
     } else if (openCount >= SENSOR_DEBOUNCE_MIN) {
-        sensorState = false;  // Door is open
+        sensorState = false; // Door is open
     }
 }
 
