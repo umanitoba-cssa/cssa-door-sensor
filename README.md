@@ -38,6 +38,8 @@ The device has an LED to monitor device status without connecting to the serial 
 
 The firmware for the ESP32 chip is written in C++ managed by the PlatformIO VSCode extension. The firmware can be flashed to the ESP32 as-is and can be configured through software via the USB serial interface.
 
+Unit testing is done using [Unity](https://www.throwtheswitch.org/unity) and can be run through PlatformIO using the native environment (Project Tasks -> native -> Advanced -> Test)
+
 ## Hardware
 
 ### Components
