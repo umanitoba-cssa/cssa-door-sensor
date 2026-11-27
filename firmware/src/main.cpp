@@ -9,11 +9,19 @@
 #include "doorstatesvc.hpp"
 #include "webhooksvc.hpp"
 
+#include <WiFi.h>
+#include <ESP32OTAPull.h>
+#include <HTTPClient.h>
+
+#define VERSION "1.0.0"
+
 #define TICK_DELAY 10
 
 #define AUTO 0
 #define CLOSED 1
 #define OPEN 2
+
+const char* updateURL = "http://iphere:8000/update.json";
 
 LEDService LEDSvc;
 WifiService WifiSvc;
@@ -21,6 +29,10 @@ ConfigManager ConfigSvc;
 SetupService SetupSvc;
 DoorStateService DoorStateSvc;
 WebhookService WebhookSvc;
+
+ESP32OTAPull ota;
+
+unsigned long lastCheck = 0;
 
 bool getDoorState();
 void startBackgroundThread();
@@ -44,6 +56,60 @@ void setup() {
     
     Serial.println("Performing webhook init...");
     WebhookSvc.init(getDoorState());
+
+    Serial.print("Firmware Version: ");
+    Serial.println(VERSION);
+
+    ota.SetCallback([](int offset, int total) {
+    Serial.printf("Downloading: %d / %d bytes\n",
+                  offset, total);
+});
+
+}
+
+void checkOTA() {
+
+    if (WiFi.status() != WL_CONNECTED) {
+        return;
+    }
+
+    if (millis() - lastCheck < 30000) {
+        return;
+    }
+
+    lastCheck = millis();
+
+    Serial.println("Checking for updates...");
+
+    Serial.print("Current Version: ");
+    Serial.println(VERSION);
+
+    int result = ota.CheckForOTAUpdate(
+        updateURL,
+        VERSION,
+        ESP32OTAPull::DONT_DO_UPDATE
+    );
+
+    Serial.print("Server Version: ");
+    Serial.println(ota.GetVersion());
+
+    Serial.print("Check Result: ");
+    Serial.println(result);
+
+    if (result == ESP32OTAPull::UPDATE_AVAILABLE) {
+
+        Serial.println("New firmware detected!");
+        Serial.println("Starting download...");
+
+        result = ota.CheckForOTAUpdate(
+            updateURL,
+            VERSION,
+            ESP32OTAPull::UPDATE_AND_BOOT
+        );
+
+        Serial.print("Installation Result: ");
+        Serial.println(result);
+    }
 }
 
 void loop() {
@@ -63,6 +129,7 @@ void loop() {
     }
 
     WebhookSvc.trySendMessage(doorState);
+    checkOTA();
 
     delay(1000);
 }
